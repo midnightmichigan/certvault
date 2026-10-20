@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CertVault — CPC / GCC Compliance Vault</title>
+<style>
+  :root{
+    --navy:#0f1e33; --navy2:#16294a; --accent:#2563eb; --accent-dark:#1d4ed8;
+    --bg:#f1f5f9; --card:#ffffff; --text:#0f172a; --muted:#64748b;
+    --border:#e2e8f0; --green:#16a34a; --green-bg:#dcfce7;
+    --amber:#b45309; --amber-bg:#fef3c7; --red:#dc2626; --red-bg:#fee2e2;
+    --red-dark:#991b1b; --red-dark-bg:#fecaca;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:230px;background:var(--navy);color:#e2e8f0;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .brand{padding:20px 20px 12px;font-weight:800;font-size:20px;color:#fff}
+  .brand small{display:block;font-size:11px;font-weight:400;color:#94a3b8;margin-top:4px;line-height:1.4}
+  .nav{display:flex;flex-direction:column;gap:2px;padding:8px 12px}
+  .nav button{background:none;border:none;color:#cbd5e1;text-align:left;padding:11px 12px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:10px}
+  .nav button:hover{background:var(--navy2)}
+  .nav button.active{background:var(--accent);color:#fff}
+  .sidefoot{margin-top:auto;padding:16px 20px;font-size:11px;color:#94a3b8;border-top:1px solid #1e3a5f;line-height:1.5}
+  .sidefoot button{background:none;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;margin-top:8px}
+  .main{flex:1;padding:28px;max-width:1180px;margin:0 auto;width:100%}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .kpi .num{font-size:30px;font-weight:800;margin-top:6px}
+  .kpi .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+  .card h2{font-size:17px;margin:0 0 12px}
+  .card h3{font-size:14px;margin:18px 0 8px;color:var(--navy)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:10px 8px;border-bottom:2px solid var(--border)}
+  td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .b-ok{background:var(--green-bg);color:var(--green)}
+  .b-warn{background:var(--amber-bg);color:var(--amber)}
+  .b-bad{background:var(--red-bg);color:var(--red)}
+  .b-expired{background:var(--red-dark-bg);color:var(--red-dark)}
+  .b-info{background:#dbeafe;color:#1d4ed8}
+  .b-gray{background:#e2e8f0;color:#475569}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--accent-dark)}
+  .btn.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .btn.danger{background:#fff;color:var(--red);border:1px solid #fca5a5}
+  .btn.small{padding:6px 10px;font-size:12px}
+  .formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+  input[type=text],input[type=email],input[type=date],input[type=month],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
+  textarea{resize:vertical;min-height:70px}
+  .checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px}
+  .checks label{display:flex;align-items:center;gap:8px;font-weight:400;color:var(--text);font-size:13.5px;margin:0}
+  .screen{display:none}
+  .screen.active{display:block;animation:fade .18s ease-in}
+  @keyframes fade{from{opacity:.4}to{opacity:1}}
+  .alertrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border);font-size:13.5px}
+  .alertrow:last-child{border-bottom:none}
+  .alertrow .grow{flex:1}
+  .tablewrap{overflow-x:auto}
+  /* countdown banner */
+  .countdown{border-radius:12px;padding:16px 20px;margin-bottom:22px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .countdown.ineffect{background:var(--red-dark-bg);border:1px solid #fca5a5}
+  .countdown.upcoming{background:#dbeafe;border:1px solid #bfdbfe}
+  .countdown .big{font-size:22px;font-weight:800;color:var(--red-dark)}
+  .countdown.upcoming .big{color:var(--accent-dark)}
+  .countdown .detail{font-size:13.5px;color:var(--text)}
+  /* progress bars */
+  .pbar{background:#e2e8f0;border-radius:6px;height:8px;min-width:90px}
+  .pbar>div{height:8px;border-radius:6px}
+  .pbar .p-red{background:var(--red)} .pbar .p-amber{background:#d97706} .pbar .p-green{background:var(--green)}
+  .checkitem{border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+  .checkitem.done{border-color:#86efac;background:#f0fdf4}
+  .checkitem .chead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .checkitem .chead .t{font-weight:700;font-size:13.5px}
+  /* Certificate document */
+  .doc{background:#fff;border:1px solid var(--border);border-radius:6px;padding:56px 54px;max-width:800px;margin:0 auto;position:relative;box-shadow:0 2px 14px rgba(15,23,42,.08)}
+  .doc .watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .doc .watermark span{transform:rotate(-24deg);font-size:44px;font-weight:900;color:rgba(37,99,235,.12);border:5px solid rgba(37,99,235,.12);padding:10px 26px;border-radius:8px;white-space:nowrap;letter-spacing:2px}
+  .doc h1.doc-title{text-align:center;font-size:22px;margin-bottom:2px}
+  .doc .doc-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:22px}
+  .doc .field{margin-bottom:12px;font-size:13.5px;line-height:1.55}
+  .doc .field b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:2px}
+  .doc .disclaimer{margin-top:26px;padding:14px;border:2px dashed #94a3b8;border-radius:8px;font-size:12.5px;color:#475569;background:#f8fafc}
+  .doc .sigline{margin-top:34px;display:flex;gap:40px}
+  .doc .sigline div{flex:1;border-top:1px solid #94a3b8;padding-top:6px;font-size:12px;color:var(--muted)}
+  .toggle{display:inline-flex;background:#e2e8f0;border-radius:10px;padding:4px;gap:4px}
+  .toggle button{border:none;background:none;padding:9px 22px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;color:#475569}
+  .toggle button.active{background:#fff;color:var(--accent-dark);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  footer.disclaimer{background:#fff;border-top:1px solid var(--border);padding:22px 28px;font-size:12.5px;color:var(--muted);line-height:1.6}
+  footer.disclaimer strong{color:var(--text)}
+  .empty{color:var(--muted);font-style:italic;padding:18px 4px;font-size:13.5px}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:900px){.twocol{grid-template-columns:1fr}}
+  @media(max-width:768px){
+    .app{flex-direction:column}
+    .sidebar{width:100%;height:auto;position:static}
+    .nav{flex-direction:row;overflow-x:auto;padding:8px}
+    .nav button{white-space:nowrap}
+    .sidefoot{display:none}
+    .main{padding:18px 14px}
+    .doc{padding:34px 22px}
+    .doc .watermark span{font-size:26px}
+    .countdown .big{font-size:18px}
+  }
+  @media print{
+    body{background:#fff}
+    .sidebar,footer.disclaimer,.noprint{display:none!important}
+    .app{display:block}
+    .screen{display:none!important}
+    .screen.active.printdoc{display:block!important}
+    .doc{box-shadow:none;border:none;max-width:none;padding:10px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">CertVault<small>CPC / GCC compliance vault + CPSC eFiling readiness for small marketplace sellers.</small></div>
+    <nav class="nav">
+      <button data-screen="dashboard" class="active">Dashboard</button>
+      <button data-screen="skus">SKUs</button>
+      <button data-screen="certs">Certificates</button>
+      <button data-screen="generator">Generator</button>
+      <button data-screen="export">Export</button>
+    </nav>
+    <div class="sidefoot">
+      CertVault beta — your data stays in your browser (localStorage). Export your CSV anytime.<br>
+      <button id="eraseAll">Erase all data</button>
+    </div>
+  </aside>
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="screen active" id="screen-dashboard">
+      <h1>Dashboard</h1>
+      <p class="sub">Your catalog's compliance health at a glance.</p>
+      <div class="countdown" id="countdownBanner"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="twocol">
+        <div class="card">
+          <h2>Needs attention</h2>
+          <div id="attentionList"></div>
+        </div>
+        <div class="card">
+          <h2>eFiling readiness</h2>
+          <p class="sub" style="margin:0 0 10px">Per-SKU checklist for CBP's PGA message set. Only 100%-complete SKUs export to the eFiling CSV.</p>
+          <div id="readinessList"></div>
+        </div>
+      </div>
+      <div class="card" id="reminderCard">
+        <h2>Email me deadline reminders</h2>
+        <p class="sub" style="margin:0 0 12px">Get an email whenever a CPSC eFiling deadline changes or a certificate of yours is nearing expiry. Your address is used only for reminders.</p>
+        <form action="https://formsubmit.co/1c091997c234a390cf773be5fd40f9b5" method="POST" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <input type="hidden" name="_subject" value="CertVault deadline reminder signup">
+          <input type="hidden" name="_template" value="table">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="text" name="_honey" style="display:none">
+          <div style="flex:1;min-width:220px"><label for="remEmail">Email address</label><input type="email" id="remEmail" name="email" required placeholder="you@example.com"></div>
+          <button class="btn" type="submit">Remind me</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- SKUs -->
+    <section class="screen" id="screen-skus">
+      <h1>SKUs</h1>
+      <p class="sub">Add products manually or paste a list of ASINs to bulk-import. Open a SKU's eFiling checklist to get it export-ready.</p>
+      <div class="card">
+        <h2>Add a SKU</h2>
+        <div class="formgrid">
+          <div><label>Product name</label><input type="text" id="skuName" placeholder="e.g. Rainbow Stacking Rings"></div>
+          <div><label>ASIN</label><input type="text" id="skuAsin" placeholder="e.g. B0C7K2M4NP"></div>
+          <div><label>Marketplace</label><select id="skuMkt"><option>Amazon</option><option>Walmart</option><option>TikTok Shop</option><option>eBay</option><option>Shopify</option></select></div>
+          <div><label>Category</label><select id="skuCat"><option>Toys</option><option>Baby Products</option><option>Electronics</option><option>Children's Jewelry</option><option>Sporting Goods</option><option>Cosmetics</option><option>Supplements</option><option>Apparel</option><option>Other</option></select></div>
+        </div>
+        <button class="btn" id="addSku">Add SKU</button>
+      </div>
+      <div class="card">
+        <h2>Bulk import — paste ASINs</h2>
+        <p class="sub" style="margin:0 0 10px">One ASIN per line. Each becomes a draft SKU (you can name them later) on the selected marketplace.</p>
+        <div class="formgrid">
+          <div style="grid-column:1/-1"><label>ASIN list</label><textarea id="bulkAsins" placeholder="B0C7K2M4NP&#10;B0D1F8Q3RT&#10;B0C9T5V2WX"></textarea></div>
+          <div><label>Marketplace for bulk import</label><select id="bulkMkt"><option>Amazon</option><option>Walmart</option><option>TikTok Shop</option></select></div>
+        </div>
+        <button class="btn" id="bulkAdd">Import ASINs</button>
+        <span id="bulkMsg" style="font-size:13px;color:var(--muted);margin-left:10px"></span>
+      </div>
+      <div class="card">
+        <h2>All SKUs</h2>
+        <div class="tablewrap"><table id="skuTable">
+          <thead><tr><th>Product</th><th>ASIN</th><th>Marketplace</th><th>Certs</th><th>eFiling ready</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="card" id="checkCard" style="display:none">
+        <h2 id="checkTitle">eFiling checklist</h2>
+        <p class="sub" style="margin:0 0 12px">The data fields CBP's PGA message set expects for certificate eFiling. A SKU's certificate rows export to CSV only when every item below is complete.</p>
+        <div style="margin-bottom:14px"><button class="btn secondary small" id="copyFromCert">Copy from latest certificate</button></div>
+        <div id="checkItems"></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px">
+          <button class="btn" id="saveCheck">Save checklist</button>
+          <span id="checkMsg" style="font-size:13px;color:var(--muted)"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CERTIFICATES -->
+    <section class="screen" id="screen-certs">
+      <h1>Certificates</h1>
+      <p class="sub">CPCs, GCCs, test reports and SDS sheets across your catalog.</p>
+      <div class="card">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <label style="margin:0">Filter:</label>
+          <select id="certFilter" style="width:auto">
+            <option value="all">All</option>
+            <option value="expired">Expired</option>
+            <option value="30">Expiring ≤ 30 days</option>
+            <option value="90">Expiring ≤ 90 days</option>
+            <option value="ok">Valid</option>
+          </select>
+        </div>
+        <div class="tablewrap"><table id="certTable">
+          <thead><tr><th>SKU</th><th>Type</th><th>Standard cited</th><th>Issuing lab</th><th>Report #</th><th>Issue date</th><th>Expiry date</th><th>Status</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h2>Add a certificate</h2>
+        <div class="formgrid">
+          <div><label>Link to SKU</label><select id="certSku"></select></div>
+          <div><label>Type</label><select id="certType"><option>CPC</option><option>GCC</option><option>Test Report</option><option>SDS</option></select></div>
+          <div><label>Standard cited</label><input type="text" id="certStd" placeholder="e.g. ASTM F963-23"></div>
+          <div><label>Issuing lab</label><input type="text" id="certLab" placeholder="e.g. Shenzhen STS Test Services"></div>
+          <div><label>Lab accreditation ID</label><input type="text" id="certAcc" placeholder="e.g. CPSC-accepted lab #1723"></div>
+          <div><label>Test report number</label><input type="text" id="certReport" placeholder="e.g. STS-2025-11847"></div>
+          <div><label>Issue date</label><input type="date" id="certIssue"></div>
+          <div><label>Expiry date</label><input type="date" id="certExpiry"></div>
+          <div><label>Importer name</label><input type="text" id="certImporter" placeholder="Your company"></div>
+          <div><label>Importer contact</label><input type="text" id="certContact" placeholder="Name, email or phone"></div>
+          <div><label>Importer address</label><input type="text" id="certAddr" placeholder="US address"></div>
+        </div>
+        <button class="btn" id="addCert">Add certificate</button>
+      </div>
+    </section>
+
+    <!-- GENERATOR -->
+    <section class="screen printdoc" id="screen-generator">
+      <h1 class="noprint">CPC / GCC Generator</h1>
+      <p class="sub noprint">Fill in the fields, generate a properly formatted certificate draft, then print or save to PDF. The document must be based on your real lab test results — CertVault only formats what you enter.</p>
+      <div class="card noprint">
+        <h2>Certificate details</h2>
+        <div style="margin-bottom:14px">
+          <label>Certificate type</label>
+          <div class="toggle" id="genToggle">
+            <button data-type="CPC" class="active">Children's Product Certificate (CPC)</button>
+            <button data-type="GCC">General Certificate of Conformity (GCC)</button>
+          </div>
+        </div>
+        <div class="formgrid">
+          <div><label>Product name</label><input type="text" id="gName" placeholder="e.g. Rainbow Stacking Rings"></div>
+          <div><label>SKU / ASIN</label><input type="text" id="gAsin" placeholder="e.g. B0C7K2M4NP"></div>
+          <div><label>Manufacturer name</label><input type="text" id="gMfr" placeholder="e.g. Shenzhen Bright Toys Co., Ltd."></div>
+          <div><label>Manufacturer address</label><input type="text" id="gMfrAddr" placeholder="City, Province, Country"></div>
+          <div><label>Importer name</label><input type="text" id="gImp" placeholder="Your US company"></div>
+          <div><label>Importer address</label><input type="text" id="gImpAddr" placeholder="City, State, ZIP"></div>
+          <div><label>Records custodian (name)</label><input type="text" id="gCust" placeholder="Full name"></div>
+          <div><label>Records custodian contact</label><input type="text" id="gCustC" placeholder="Email / phone"></div>
+          <div><label>Month/year of manufacture</label><input type="month" id="gMfgDate"></div>
+          <div><label>Place of manufacture</label><input type="text" id="gMfgPlace" placeholder="City, Country"></div>
+          <div><label>Testing lab name</label><input type="text" id="gLab" placeholder="e.g. Shenzhen STS Test Services"></div>
+          <div><label>Lab address</label><input type="text" id="gLabAddr" placeholder="Lab address"></div>
+          <div><label>Lab accreditation ID</label><input type="text" id="gAcc" placeholder="e.g. CPSC-accepted lab #1723"></div>
+          <div><label>Test report number</label><input type="text" id="gReport" placeholder="e.g. STS-2025-11847"></div>
+          <div><label>Test date(s)</label><input type="text" id="gTestDate" placeholder="e.g. 2025-08-01 to 2025-08-14"></div>
+        </div>
+        <h3>Standards / rules cited</h3>
+        <div class="checks" id="gStandards">
+          <label><input type="checkbox" value="ASTM F963-23 — Standard Consumer Safety Specification for Toy Safety" checked> ASTM F963-23 (Toy Safety)</label>
+          <label><input type="checkbox" value="16 CFR 1501 — Small Parts for Toys and Other Articles Intended for Use by Children Under 3"> 16 CFR 1501 (Small Parts)</label>
+          <label><input type="checkbox" value="16 CFR 1303 — Ban of Lead-Containing Paint"> 16 CFR 1303 (Lead in Paint)</label>
+          <label><input type="checkbox" value="16 CFR 1307 — Prohibition of Children's Toys and Child Care Articles Containing Specified Phthalates"> 16 CFR 1307 (Phthalates)</label>
+          <label><input type="checkbox" value="16 CFR 1511 — Requirements for Pacifiers"> 16 CFR 1511 (Pacifiers)</label>
+          <label><input type="checkbox" value="UL 4200A — Standard for Safety for Products Incorporating Button Batteries or Coin Cell Batteries"> UL 4200A (Button Batteries)</label>
+          <label><input type="checkbox" value="ASTM F2923 — Standard Specification for Consumer Product Safety for Children's Jewelry"> ASTM F2923 (Children's Jewelry)</label>
+          <label><input type="checkbox" value="16 CFR 1120 — Substantial Product Hazard List: Drawstrings on Children's Upper Outerwear"> 16 CFR 1120 (Drawstrings)</label>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" id="genBtn">Generate certificate</button>
+          <button class="btn secondary" id="printBtn" style="display:none">Print / Save PDF</button>
+          <button class="btn secondary" id="saveVaultBtn" style="display:none">Save to vault</button>
+        </div>
+      </div>
+      <div class="card" id="docCard" style="display:none">
+        <div class="doc" id="docOut"></div>
+      </div>
+    </section>
+
+    <!-- EXPORT -->
+    <section class="screen" id="screen-export">
+      <h1>eFiling Export</h1>
+      <p class="sub">CSV in CPSC PGA message-set style fields — hand it to your customs broker for ACE eFiling. Only rows from SKUs with a 100%-complete eFiling checklist are included; everything else lands on the gap list.</p>
+      <div class="card">
+        <h2>Export preview</h2>
+        <p class="sub" style="margin:0 0 10px">Fields: sku_name, asin, marketplace, category, certificate_type, standards_cited, certifier_name, certifier_us_address, testing_lab, lab_accreditation_id, test_report_number, test_report_date, manufacture_date, manufacture_place, records_custodian_name, records_custodian_contact, issue_date, expiry_date, days_to_expiry.</p>
+        <div class="tablewrap"><table id="exportTable">
+          <thead><tr><th>SKU</th><th>ASIN</th><th>Cert type</th><th>Standard</th><th>Lab</th><th>Report #</th><th>Expiry</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div id="gapNote" style="margin:12px 0;font-size:13px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn" id="csvBtn">Download eFiling CSV</button>
+          <button class="btn secondary" id="csvGapBtn">Download gap list</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>How this is used</h2>
+        <p style="font-size:13.5px;line-height:1.7;color:var(--muted);margin:0">
+          Since July 8, 2026, importers of CPSC-regulated products must eFile certificate data through CBP's ACE system
+          before goods clear customs. Send this CSV to your customs broker — they map these fields into the
+          PGA message set on the entry filing. CertVault generates the <b>data format</b>; your broker (or you as
+          importer of record) remains the filer. CertVault is not a law firm, not a testing laboratory, and not a
+          customs broker. Not legal advice — confirm requirements with the CPSC Small Business Ombudsman, your lab, or qualified counsel.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+<footer class="disclaimer">
+  <strong>Honest disclaimer.</strong> CertVault is a <b>beta product</b>: your data is stored only in this browser's local storage and never sent to us.
+  It is not legal advice, not a law firm, not a testing laboratory, and not a customs broker, and it is not affiliated with or endorsed by the CPSC or CBP.
+  Always confirm regulatory requirements with the CPSC Small Business Ombudsman, your testing lab, your customs broker, or qualified counsel before importing or selling regulated products.
+</footer>
+<script>
+(function(){
+"use strict";
+
+/* ================= pure core (testable, no DOM) ================= */
+var DEADLINE_ISO = "2026-07-08";
+var LS_KEY = "certvault_beta_v1";
+
+function parseDay(iso){ return new Date(iso + "T00:00:00Z").getTime(); }
+function daysBetween(aISO, bISO){ return Math.round((parseDay(bISO) - parseDay(aISO)) / 86400000); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function isoPlus(days){ var d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+function daysUntil(iso){
+  if(!iso) return null;
+  return daysBetween(todayISO(), iso);
+}
+/* mandate countdown: never goes negative; after the date it reports in-effect */
+function mandateStatus(nowISO){
+  var d = daysBetween(nowISO, DEADLINE_ISO);
+  return { inEffect: d <= 0, daysLeft: d > 0 ? d : 0, deadline: DEADLINE_ISO };
+}
+
+/* eFiling checklist — the 8 PGA message-set field groups */
+var CHECKLIST_KEYS = ["identifiers","certType","certifier","rules","lab","report","mfg","custodian"];
+function itemComplete(key, ef){
+  ef = ef || {};
+  var v = ef[key];
+  switch(key){
+    case "identifiers": return !!(v && String(v.model||"").trim() && String(v.sku||"").trim());
+    case "certType":     return v === "CPC" || v === "GCC";
+    case "certifier":    return !!(v && String(v.name||"").trim() && String(v.usAddress||"").trim());
+    case "rules":        return !!(v && String(v.list||"").trim());
+    case "lab":          return !!(v && String(v.name||"").trim() && String(v.id||"").trim());
+    case "report":       return !!(v && String(v.number||"").trim() && String(v.date||"").trim());
+    case "mfg":          return !!(v && String(v.date||"").trim() && String(v.place||"").trim());
+    case "custodian":    return !!(v && String(v.name||"").trim() && String(v.contact||"").trim());
+    default: return false;
+  }
+}
+function checklistCompleteness(ef){
+  var done = CHECKLIST_KEYS.filter(function(k){ return itemComplete(k, ef); });
+  return { done: done.length, total: CHECKLIST_KEYS.length,
+           pct: Math.round(done.length / CHECKLIST_KEYS.length * 100),
+           keys: done };
+}
+function skuReady(sku){ return checklistCompleteness(sku.efiling || {}).pct === 100; }
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+/* CSV */
+function toCSV(rows){
+  return rows.map(function(r){
+    return r.map(function(v){
+      v = (v===null||v===undefined) ? "" : String(v);
+      return (/[",\n\r]/.test(v)) ? ('"'+v.replace(/"/g,'""')+'"') : v;
+    }).join(",");
+  }).join("\r\n");
+}
+/* eFiling-ready rows: GATED on 100% checklist completeness */
+function csvEfilingRows(state){
+  var header = ["sku_name","asin","marketplace","category","certificate_type","standards_cited",
+    "certifier_name","certifier_us_address","testing_lab","lab_accreditation_id",
+    "test_report_number","test_report_date","manufacture_date","manufacture_place",
+    "records_custodian_name","records_custodian_contact",
+    "issue_date","expiry_date","days_to_expiry"];
+  var rows = [header];
+  (state.certs||[]).forEach(function(c){
+    var sku = (state.skus||[]).filter(function(s){return s.id===c.skuId;})[0];
+    if(!sku || !skuReady(sku)) return; /* gate */
+    var ef = sku.efiling || {};
+    rows.push([
+      sku.name, sku.asin, sku.marketplace, sku.category,
+      ef.certType || c.type, c.standard,
+      (ef.certifier||{}).name, (ef.certifier||{}).usAddress,
+      (ef.lab||{}).name, (ef.lab||{}).id,
+      (ef.report||{}).number, (ef.report||{}).date,
+      (ef.mfg||{}).date, (ef.mfg||{}).place,
+      (ef.custodian||{}).name, (ef.custodian||{}).contact,
+      c.issueDate, c.expiryDate, daysUntil(c.expiryDate)
+    ]);
+  });
+  return rows;
+}
+/* gap list: SKUs missing certificates or with incomplete checklists */
+function gapRows(state){
+  var header = ["sku_name","asin","marketplace","issue"];
+  var rows = [header];
+  (state.skus||[]).forEach(function(s){
+    var nCerts = (state.certs||[]).filter(function(c){return c.skuId===s.id;}).length;
+    if(nCerts===0){ rows.push([s.name,s.asin,s.marketplace,"NO_CERTIFICATE_ON_FILE"]); return; }
+    var pct = checklistCompleteness(s.efiling||{}).pct;
+    if(pct < 100){ rows.push([s.name,s.asin,s.marketplace,"EFILING_CHECKLIST_INCOMPLETE_"+pct+"PCT"]); }
+  });
+  return rows;
+}
+function certStatus(c){
+  var d = daysUntil(c.expiryDate);
+  if(d===null) return {label:"No expiry",cls:"b-gray",days:null};
+  if(d<0)  return {label:"Expired",cls:"b-expired",days:d};
+  if(d<=30) return {label:"≤30 days",cls:"b-bad",days:d};
+  if(d<=90) return {label:"≤90 days",cls:"b-warn",days:d};
+  return {label:"Valid",cls:"b-ok",days:d};
+}
+
+/* node test export */
+if(typeof module !== "undefined" && module.exports){
+  module.exports = {
+    DEADLINE_ISO: DEADLINE_ISO, daysBetween: daysBetween, mandateStatus: mandateStatus,
+    itemComplete: itemComplete, checklistCompleteness: checklistCompleteness,
+    CHECKLIST_KEYS: CHECKLIST_KEYS, skuReady: skuReady,
+    toCSV: toCSV, csvEfilingRows: csvEfilingRows, gapRows: gapRows,
+    certStatus: certStatus
+  };
+}
+
+/* ================= app (browser only) ================= */
+if(typeof document !== "undefined" && document.querySelector){
+
+function uid(p){ return (p||"id")+"_"+Math.random().toString(36).slice(2,9); }
+function fmtDate(iso){ if(!iso) return "—"; var p=iso.split("-"); return p[1]+"/"+p[2]+"/"+p[0]; }
+function badgeFor(c){ var s=certStatus(c); var d=s.days; var dtxt=(d===null)?"":(d<0?Math.abs(d)+"d overdue":d+"d left");
+  return '<span class="badge '+s.cls+'">'+esc(s.label)+'</span>'+(dtxt?' <span style="font-size:11px;color:#64748b">'+dtxt+'</span>':''); }
+
+var state={skus:[],certs:[]};
+function save(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){} }
+function load(){
+  try{
+    var raw=localStorage.getItem(LS_KEY);
+    if(raw){ var p=JSON.parse(raw); if(p && Array.isArray(p.skus) && Array.isArray(p.certs)){ state=p; return; } }
+  }catch(e){}
+  state={skus:[],certs:[]}; save();
+}
+
+/* ---------- nav ---------- */
+document.querySelectorAll(".nav button").forEach(function(b){
+  b.addEventListener("click",function(){
+    document.querySelectorAll(".nav button").forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active");
+    document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
+    document.getElementById("screen-"+b.getAttribute("data-screen")).classList.add("active");
+    window.scrollTo(0,0);
+  });
+});
+
+/* ---------- shared ---------- */
+function certsFor(skuId){ return state.certs.filter(function(c){return c.skuId===skuId;}); }
+function skuById(id){ return state.skus.filter(function(s){return s.id===id;})[0]; }
+function pbarHTML(pct){
+  var cls = pct===100 ? "p-green" : (pct>=50 ? "p-amber" : "p-red");
+  return '<span style="display:inline-flex;align-items:center;gap:8px"><span class="pbar"><div class="'+cls+'" style="width:'+pct+'%"></div></span><b style="font-size:12.5px">'+pct+'%</b></span>';
+}
+
+/* ---------- dashboard ---------- */
+function renderCountdown(){
+  var st = mandateStatus(todayISO());
+  var el = document.getElementById("countdownBanner");
+  if(st.inEffect){
+    el.className = "countdown ineffect";
+    el.innerHTML = '<div class="big">Mandate in effect</div>'+
+      '<div class="detail">The CPSC eFiling mandate has been in effect since July 8, 2026. '+
+      'Importers of regulated products must eFile certificate data through CBP\'s ACE system before goods clear customs. '+
+      'Get every SKU to 100% eFiling readiness below.</div>';
+  } else {
+    el.className = "countdown upcoming";
+    el.innerHTML = '<div class="big">'+st.daysLeft+' day'+(st.daysLeft===1?"":"s")+' to go</div>'+
+      '<div class="detail">Until the CPSC eFiling mandate takes effect on July 8, 2026. '+
+      'Importers will need to eFile certificate data through CBP\'s ACE system. Get your catalog ready now.</div>';
+  }
+}
+function renderDashboard(){
+  var expiring90=state.certs.filter(function(c){var s=certStatus(c);return s.days!==null&&s.days<=90;});
+  var expiring30=state.certs.filter(function(c){var s=certStatus(c);return s.days!==null&&s.days<=30;});
+  var missing=state.skus.filter(function(s){return certsFor(s.id).length===0;});
+  var ready=state.skus.filter(skuReady);
+  var urgent=state.certs.filter(function(c){var s=certStatus(c);return s.days!==null&&s.days<=90;})
+    .sort(function(a,b){return daysUntil(a.expiryDate)-daysUntil(b.expiryDate);});
+  var incomplete=state.skus.filter(function(s){return certsFor(s.id).length>0 && !skuReady(s);});
+  var kpis=[
+    {label:"Total SKUs",num:state.skus.length,hint:"across marketplaces",color:"#0f172a"},
+    {label:"eFiling ready",num:ready.length,hint:"100% checklist complete",color:(state.skus.length&&ready.length<state.skus.length)?"#b45309":"#16a34a"},
+    {label:"Expiring ≤ 90 days",num:expiring90.length,hint:"certificates need retest",color:expiring90.length?"#b45309":"#16a34a"},
+    {label:"Expiring ≤ 30 days / expired",num:expiring30.length,hint:"urgent action",color:expiring30.length?"#dc2626":"#16a34a"}
+  ];
+  document.getElementById("kpis").innerHTML=kpis.map(function(k){
+    return '<div class="kpi"><div class="label">'+k.label+'</div><div class="num" style="color:'+k.color+'">'+k.num+'</div><div class="hint">'+k.hint+'</div></div>';
+  }).join("");
+  var html="";
+  if(urgent.length===0&&missing.length===0&&incomplete.length===0){
+    html='<div class="empty">Nothing urgent — every SKU is certified and eFiling-ready.</div>';
+  }
+  urgent.forEach(function(c){
+    var sku=skuById(c.skuId)||{name:"(unknown)"};
+    html+='<div class="alertrow"><div class="grow"><b>'+esc(c.type)+'</b> · '+esc(sku.name)+' <span style="color:#64748b">· '+esc(c.standard)+'</span></div>'+badgeFor(c)+'</div>';
+  });
+  missing.forEach(function(s){
+    html+='<div class="alertrow"><div class="grow"><b>'+esc(s.name)+'</b> <span style="color:#64748b">· '+esc(s.asin)+'</span></div><span class="badge b-bad">No certificates</span></div>';
+  });
+  document.getElementById("attentionList").innerHTML=html;
+  var rl="";
+  if(state.skus.length===0){
+    rl='<div class="empty">No SKUs yet. Add your first SKU to start building eFiling readiness.</div>';
+  } else {
+    var sorted=state.skus.slice().sort(function(a,b){return checklistCompleteness(a.efiling||{}).pct-checklistCompleteness(b.efiling||{}).pct;});
+    sorted.forEach(function(s){
+      var pct=checklistCompleteness(s.efiling||{}).pct;
+      var tag=pct===100?'<span class="badge b-ok">Ready</span>':'<span class="badge b-warn">Incomplete</span>';
+      rl+='<div class="alertrow"><div class="grow"><b>'+esc(s.name)+'</b><br><span style="font-size:12px;color:#64748b">'+esc(s.asin)+' · '+esc(s.marketplace)+'</span></div>'+pbarHTML(pct)+' '+tag+'</div>';
+    });
+  }
+  document.getElementById("readinessList").innerHTML=rl;
+}
+
+/* ---------- SKUs + checklist ---------- */
+var checkSkuId=null;
+var CHECK_DEFS=[
+  {key:"identifiers",title:"(a) Product identifiers",fields:[["model","Model / part number","text"],["sku","SKU / ASIN","text"]]},
+  {key:"certType",title:"(b) Certificate type",select:[["","— select —"],["CPC","CPC — children's products"],["GCC","GCC — general-use products"]]},
+  {key:"certifier",title:"(c) Certifier identity",fields:[["name","Importer / manufacturer name","text"],["usAddress","US address","text"]]},
+  {key:"rules",title:"(d) Cited CPSC rules / standards",fields:[["list","Rules cited (e.g. 16 CFR 1500, ASTM F963-23)","text"]]},
+  {key:"lab",title:"(e) Testing lab",fields:[["name","Lab name","text"],["id","CPSC-accepted lab ID","text"]]},
+  {key:"report",title:"(f) Test report",fields:[["number","Report number","text"],["date","Report date","text"]]},
+  {key:"mfg",title:"(g) Date / place of manufacture",fields:[["date","Month/year of manufacture","text"],["place","Place of manufacture","text"]]},
+  {key:"custodian",title:"(h) Records custodian",fields:[["name","Custodian name","text"],["contact","Custodian contact (email/phone)","text"]]}
+];
+function renderSkus(){
+  var rows=state.skus.map(function(s){
+    var n=certsFor(s.id).length;
+    var pct=checklistCompleteness(s.efiling||{}).pct;
+    var status=n===0?'<span class="badge b-bad">Missing certificates</span>':(pct===100?'<span class="badge b-ok">Covered + ready</span>':'<span class="badge b-warn">Certs ok · checklist incomplete</span>');
+    return '<tr><td><b>'+esc(s.name)+'</b></td><td style="font-family:monospace">'+esc(s.asin)+'</td><td>'+esc(s.marketplace)+'</td><td>'+n+'</td><td>'+pbarHTML(pct)+'</td><td style="white-space:nowrap">'+status+'<br>'+
+      '<button class="btn secondary small" data-check="'+s.id+'" style="margin-top:6px">eFiling checklist</button> '+
+      '<button class="btn danger small" data-del-sku="'+s.id+'">Delete</button></td></tr>';
+  });
+  document.querySelector("#skuTable tbody").innerHTML=rows.join("")||'<tr><td colspan="6" class="empty">No SKUs yet — add one above or bulk-import ASINs.</td></tr>';
+  document.querySelectorAll("[data-del-sku]").forEach(function(b){
+    b.addEventListener("click",function(){
+      var id=b.getAttribute("data-del-sku");
+      if(!confirm("Delete this SKU, its checklist and its certificates?"))return;
+      state.skus=state.skus.filter(function(s){return s.id!==id;});
+      state.certs=state.certs.filter(function(c){return c.skuId!==id;});
+      if(checkSkuId===id){checkSkuId=null;document.getElementById("checkCard").style.display="none";}
+      save(); renderAll();
+    });
+  });
+  document.querySelectorAll("[data-check]").forEach(function(b){
+    b.addEventListener("click",function(){ openChecklist(b.getAttribute("data-check")); });
+  });
+  var sel=document.getElementById("certSku");
+  sel.innerHTML=state.skus.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+' ('+esc(s.asin)+')</option>';}).join("");
+}
+function openChecklist(skuId){
+  var sku=skuById(skuId); if(!sku)return;
+  checkSkuId=skuId;
+  var ef=sku.efiling||{};
+  document.getElementById("checkTitle").textContent="eFiling checklist — "+sku.name+" ("+sku.asin+")";
+  var html="";
+  CHECK_DEFS.forEach(function(def){
+    var done=itemComplete(def.key,ef);
+    html+='<div class="checkitem'+(done?" done":"")+'"><div class="chead"><span class="t">'+def.title+'</span>'+(done?'<span class="badge b-ok">Complete</span>':'<span class="badge b-gray">Incomplete</span>')+'</div><div class="formgrid">';
+    if(def.select){
+      html+='<div><label>'+def.title.split(" ",1)[0]+' value</label><select data-ck="'+def.key+'">'+
+        def.select.map(function(o){return '<option value="'+esc(o[0])+'"'+(ef[def.key]===o[0]?" selected":"")+'>'+esc(o[1])+'</option>';}).join("")+
+        '</select></div>';
+    } else {
+      def.fields.forEach(function(f){
+        var val=(ef[def.key]&&ef[def.key][f[0]])||"";
+        html+='<div><label>'+esc(f[1])+'</label><input type="text" data-ck="'+def.key+'" data-ckf="'+f[0]+'" value="'+esc(val)+'" placeholder="'+esc(f[1])+'"></div>';
+      });
+    }
+    html+='</div></div>';
+  });
+  document.getElementById("checkItems").innerHTML=html;
+  document.getElementById("checkMsg").textContent="";
+  var card=document.getElementById("checkCard");
+  card.style.display="block";
+  card.scrollIntoView({behavior:"smooth"});
+}
+document.getElementById("saveCheck").addEventListener("click",function(){
+  var sku=skuById(checkSkuId); if(!sku)return;
+  var ef=sku.efiling||{};
+  document.querySelectorAll("#checkItems [data-ck]").forEach(function(inp){
+    var key=inp.getAttribute("data-ck"), sub=inp.getAttribute("data-ckf");
+    if(sub===null){ ef[key]=inp.value; }
+    else { ef[key]=ef[key]||{}; ef[key][sub]=inp.value.trim(); }
+  });
+  sku.efiling=ef; save(); renderAll(); openChecklist(checkSkuId);
+  var c=checklistCompleteness(ef);
+  document.getElementById("checkMsg").textContent="Saved — "+c.pct+"% complete ("+c.done+"/"+c.total+" items).";
+});
+document.getElementById("copyFromCert").addEventListener("click",function(){
+  var sku=skuById(checkSkuId); if(!sku)return;
+  var certs=certsFor(sku.id);
+  if(!certs.length){ alert("No certificates on file for this SKU yet."); return; }
+  var c=certs[certs.length-1];
+  var ef=sku.efiling||{};
+  ef.lab={name:c.lab||"",id:c.accreditationId||""};
+  ef.report={number:c.reportNumber||"",date:c.issueDate||""};
+  ef.certifier={name:c.importer||"",usAddress:c.address||""};
+  if(!ef.rules) ef.rules={list:c.standard||""};
+  if(!ef.certType && (c.type==="CPC"||c.type==="GCC")) ef.certType=c.type;
+  sku.efiling=ef; save(); openChecklist(checkSkuId);
+  document.getElementById("checkMsg").textContent="Copied lab, report, and certifier fields from the latest certificate — review and save.";
+});
+document.getElementById("addSku").addEventListener("click",function(){
+  var name=document.getElementById("skuName").value.trim(),
+      asin=document.getElementById("skuAsin").value.trim(),
+      mkt=document.getElementById("skuMkt").value,
+      cat=document.getElementById("skuCat").value;
+  if(!name||!asin){ alert("Product name and ASIN are required."); return; }
+  state.skus.push({id:uid("s"),name:name,asin:asin,marketplace:mkt,category:cat,efiling:{}});
+  document.getElementById("skuName").value="";document.getElementById("skuAsin").value="";
+  save(); renderAll();
+});
+document.getElementById("bulkAdd").addEventListener("click",function(){
+  var raw=document.getElementById("bulkAsins").value, mkt=document.getElementById("bulkMkt").value;
+  var lines=raw.split(/[\n,;]+/).map(function(x){return x.trim().toUpperCase();}).filter(Boolean);
+  var asins=[],seen={};
+  state.skus.forEach(function(s){seen[s.asin.toUpperCase()]=1;});
+  lines.forEach(function(l){ var m=l.match(/[A-Z0-9]{10}/); var a=m?m[0]:l; if(!seen[a]){seen[a]=1;asins.push(a);} });
+  asins.forEach(function(a){ state.skus.push({id:uid("s"),name:"Bulk import — "+a,asin:a,marketplace:mkt,category:"Other",efiling:{}}); });
+  save(); renderAll();
+  document.getElementById("bulkMsg").textContent=asins.length?("Imported "+asins.length+" new ASIN(s). Rename them above and complete each SKU's eFiling checklist."):"No new ASINs found (duplicates skipped).";
+});
+
+/* ---------- certificates ---------- */
+function renderCerts(){
+  var f=document.getElementById("certFilter").value;
+  var list=state.certs.slice().sort(function(a,b){return daysUntil(a.expiryDate)-daysUntil(b.expiryDate);});
+  if(f==="expired") list=list.filter(function(c){return certStatus(c).days<0;});
+  if(f==="30") list=list.filter(function(c){var d=certStatus(c).days;return d!==null&&d<=30;});
+  if(f==="90") list=list.filter(function(c){var d=certStatus(c).days;return d!==null&&d<=90;});
+  if(f==="ok") list=list.filter(function(c){return certStatus(c).days>90;});
+  var rows=list.map(function(c){
+    var sku=skuById(c.skuId)||{name:"(unknown)"};
+    return '<tr><td><b>'+esc(sku.name)+'</b></td><td>'+esc(c.type)+'</td><td>'+esc(c.standard)+'</td><td>'+esc(c.lab)+'</td><td style="font-family:monospace">'+esc(c.reportNumber)+'</td><td>'+fmtDate(c.issueDate)+'</td><td>'+fmtDate(c.expiryDate)+'</td><td>'+badgeFor(c)+'</td>'+
+      '<td><button class="btn danger small" data-del-cert="'+c.id+'">Delete</button></td></tr>';
+  });
+  document.querySelector("#certTable tbody").innerHTML=rows.join("")||'<tr><td colspan="9" class="empty">No certificates match this filter.</td></tr>';
+  document.querySelectorAll("[data-del-cert]").forEach(function(b){
+    b.addEventListener("click",function(){
+      if(!confirm("Delete this certificate?"))return;
+      var id=b.getAttribute("data-del-cert");
+      state.certs=state.certs.filter(function(c){return c.id!==id;});
+      save(); renderAll();
+    });
+  });
+}
+document.getElementById("certFilter").addEventListener("change",renderCerts);
+document.getElementById("addCert").addEventListener("click",function(){
+  var c={
+    id:uid("c"),skuId:document.getElementById("certSku").value,
+    type:document.getElementById("certType").value,
+    standard:document.getElementById("certStd").value.trim()||"—",
+    lab:document.getElementById("certLab").value.trim()||"—",
+    accreditationId:document.getElementById("certAcc").value.trim()||"—",
+    reportNumber:document.getElementById("certReport").value.trim()||"—",
+    issueDate:document.getElementById("certIssue").value||todayISO(),
+    expiryDate:document.getElementById("certExpiry").value||isoPlus(365),
+    importer:document.getElementById("certImporter").value.trim()||"—",
+    contact:document.getElementById("certContact").value.trim()||"—",
+    address:document.getElementById("certAddr").value.trim()||"—"
+  };
+  state.certs.push(c);
+  ["certStd","certLab","certAcc","certReport","certIssue","certExpiry","certImporter","certContact","certAddr"].forEach(function(i){document.getElementById(i).value="";});
+  save(); renderAll();
+});
+
+/* ---------- generator ---------- */
+var genType="CPC";
+document.querySelectorAll("#genToggle button").forEach(function(b){
+  b.addEventListener("click",function(){
+    document.querySelectorAll("#genToggle button").forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active"); genType=b.getAttribute("data-type");
+  });
+});
+function genDocData(){
+  function v(id){ return document.getElementById(id).value.trim(); }
+  var stds=[];
+  document.querySelectorAll("#gStandards input:checked").forEach(function(c){stds.push(c.value);});
+  return {
+    type:genType,
+    name:v("gName")||"[Product name]",
+    asin:v("gAsin")||"[SKU/ASIN]",
+    mfr:v("gMfr")||"[Manufacturer]",
+    mfrAddr:v("gMfrAddr")||"[Manufacturer address]",
+    imp:v("gImp")||"[Importer]",
+    impAddr:v("gImpAddr")||"[Importer address]",
+    cust:v("gCust")||"[Records custodian]",
+    custC:v("gCustC")||"[Contact]",
+    mfgDate:document.getElementById("gMfgDate").value||"[Month/Year]",
+    mfgPlace:v("gMfgPlace")||"[Place of manufacture]",
+    lab:v("gLab")||"[Testing laboratory]",
+    labAddr:v("gLabAddr")||"[Lab address]",
+    acc:v("gAcc")||"[Accreditation ID]",
+    report:v("gReport")||"[Report number]",
+    testDate:v("gTestDate")||"[Test date(s)]",
+    standards:stds
+  };
+}
+function field(label,value){ return '<div class="field"><b>'+label+'</b>'+esc(value)+'</div>'; }
+document.getElementById("genBtn").addEventListener("click",function(){
+  var d=genDocData();
+  var title=d.type==="CPC"?"CHILDREN'S PRODUCT CERTIFICATE":"GENERAL CERTIFICATE OF CONFORMITY";
+  var cites=d.standards.length?d.standards.map(function(s){return "<li>"+esc(s)+"</li>";}).join(""):"<li>[No standards selected]</li>";
+  var certify=d.type==="CPC"
+    ? "I hereby certify that the children's product identified above complies with all rules, bans, standards, or regulations applicable to the product under any act enforced by the U.S. Consumer Product Safety Commission, and that the information in this certificate is complete and accurate to the best of my knowledge."
+    : "I hereby certify that the product identified above complies with all applicable rules, bans, standards, and regulations enforced by the U.S. Consumer Product Safety Commission, and that the information in this certificate is complete and accurate to the best of my knowledge.";
+  document.getElementById("docOut").innerHTML=
+    '<div class="watermark"><span>DRAFT</span></div>'+
+    '<h1 class="doc-title">'+title+'</h1>'+
+    '<div class="doc-sub">Per 16 CFR 1110 — draft formatted by CertVault beta. Verify every field against your actual lab test results.</div>'+
+    field("1. Identification of the product covered by this certificate",d.name+" — SKU/ASIN: "+d.asin)+
+    field("2. Citation to each CPSC product safety rule to which this product is being certified","<ul style='margin:4px 0;padding-left:20px'>"+cites+"</ul>")+
+    field("3. Manufacturer","Name: "+d.mfr+"<br>Address: "+d.mfrAddr)+
+    field("4. Importer of record","Name: "+d.imp+"<br>Address: "+d.impAddr)+
+    field("5. Contact person maintaining test records","Name: "+d.cust+"<br>Contact: "+d.custC)+
+    field("6. Date and place of manufacture","Month/Year: "+d.mfgDate+"<br>Place: "+d.mfgPlace)+
+    field("7. Date(s) and place(s) of testing","Date(s): "+d.testDate+"<br>Lab: "+d.lab+"<br>Address: "+d.labAddr+"<br>Accreditation: "+d.acc+"<br>Test report no.: "+d.report)+
+    field("8. Certification statement",certify)+
+    '<div class="sigline"><div>Name (print)<br><br>____________________________</div><div>Title / Company<br><br>____________________________</div><div>Signature &amp; Date<br><br>____________________________</div></div>'+
+    '<div class="disclaimer"><b>DRAFT — verify before use.</b> This document is only as valid as the information you entered: it must be based on real CPSC-accepted laboratory test results for your specific product, and the certifier must be the domestic manufacturer, importer, or private labeler. CertVault is not a testing laboratory, customs broker, or law firm. Not legal advice — confirm requirements with the CPSC Small Business Ombudsman, your lab, or qualified counsel.</div>';
+  document.getElementById("docCard").style.display="block";
+  document.getElementById("printBtn").style.display="inline-block";
+  document.getElementById("saveVaultBtn").style.display="inline-block";
+  document.getElementById("docCard").scrollIntoView({behavior:"smooth"});
+});
+document.getElementById("printBtn").addEventListener("click",function(){ window.print(); });
+document.getElementById("saveVaultBtn").addEventListener("click",function(){
+  var d=genDocData();
+  var match=state.skus.filter(function(s){return s.asin.toUpperCase()===d.asin.toUpperCase()||s.name.toLowerCase()===d.name.toLowerCase();})[0];
+  var skuId=match?match.id:(state.skus.length?state.skus[0].id:null);
+  if(!skuId){ alert("Add a SKU first, then save the certificate."); return; }
+  state.certs.push({
+    id:uid("c"),skuId:skuId,type:d.type,
+    standard:d.standards.length?d.standards.join("; "):"—",
+    lab:d.lab,accreditationId:d.acc,reportNumber:d.report,
+    issueDate:todayISO(),expiryDate:isoPlus(365),
+    importer:d.imp,contact:d.custC,address:d.impAddr
+  });
+  save(); renderAll();
+  alert("Saved to vault as "+d.type+" (expiry: 1 year from today). Complete the SKU's eFiling checklist to make it export-ready.");
+});
+
+/* ---------- export ---------- */
+function downloadBlob(filename,content,mime){
+  var blob=new Blob([content],{type:mime||"text/csv;charset=utf-8"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },400);
+}
+function renderExport(){
+  var rows=state.certs.slice().sort(function(a,b){return daysUntil(a.expiryDate)-daysUntil(b.expiryDate);})
+    .filter(function(c){ var sku=skuById(c.skuId); return sku && skuReady(sku); })
+    .map(function(c){
+      var sku=skuById(c.skuId)||{name:"—",asin:"—"};
+      return '<tr><td>'+esc(sku.name)+'</td><td style="font-family:monospace">'+esc(sku.asin)+'</td><td>'+esc(c.type)+'</td><td>'+esc(c.standard)+'</td><td>'+esc(c.lab)+'</td><td style="font-family:monospace">'+esc(c.reportNumber)+'</td><td>'+fmtDate(c.expiryDate)+'</td><td>'+badgeFor(c)+'</td></tr>';
+    });
+  document.querySelector("#exportTable tbody").innerHTML=rows.join("")||'<tr><td colspan="8" class="empty">No export-ready rows yet — complete a SKU\'s eFiling checklist to 100% and link at least one certificate.</td></tr>';
+  var gaps=gapRows(state).slice(1);
+  document.getElementById("gapNote").innerHTML=gaps.length
+    ? '<span class="badge b-bad">'+gaps.length+' SKU(s) not export-ready</span> <span style="color:#64748b">— '+esc(gaps.map(function(g){return g[0];}).join(", "))+'</span>'
+    : (state.skus.length?'<span class="badge b-ok">All SKUs are export-ready</span>':'');
+}
+document.getElementById("csvBtn").addEventListener("click",function(){
+  var rows=csvEfilingRows(state);
+  if(rows.length===1){ alert("No export-ready rows yet. Complete a SKU's eFiling checklist to 100% first."); return; }
+  downloadBlob("certvault_efiling_export_"+todayISO()+".csv",toCSV(rows));
+  alert("Exported "+(rows.length-1)+" eFiling-ready row(s).");
+});
+document.getElementById("csvGapBtn").addEventListener("click",function(){
+  var rows=gapRows(state);
+  if(rows.length===1){ alert("No gaps — every SKU is export-ready."); return; }
+  downloadBlob("certvault_gap_list_"+todayISO()+".csv",toCSV(rows));
+});
+
+/* ---------- init ---------- */
+function renderAll(){ renderCountdown(); renderDashboard(); renderSkus(); renderCerts(); renderExport(); }
+document.getElementById("eraseAll").addEventListener("click",function(){
+  if(confirm("Erase ALL CertVault data in this browser? This cannot be undone.")){
+    state={skus:[],certs:[]}; save(); checkSkuId=null;
+    document.getElementById("checkCard").style.display="none";
+    renderAll();
+  }
+});
+load();
+renderAll();
+}
+})();
+</script>
+</body>
+</html>
